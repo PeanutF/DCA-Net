@@ -11,8 +11,8 @@ def read_data(path):
     for line in f:
         line = line.strip().split(" ")
 
-        if len(line) == 2:
-            token, slot_label = line
+        if len(line) == 3:
+            token, slot_label, word = line
             slot_labels.append(slot_label[2:])
             vocab[token] = vocab.get(token, 0) + 1
             if slot_label not in slot_list:
@@ -31,7 +31,7 @@ def read_data(path):
 
 
 if __name__ == '__main__':
-    path = "./snips/"
+    path = "./crosswoz/"
     read_data(path + "train.txt")
     read_data(path + "test.txt")
     read_data(path + "dev.txt")

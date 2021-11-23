@@ -28,28 +28,30 @@ def read_corpus(path, max_length, intent2idx, slot2idx, vocab, is_train=True):
 
     :return:
     """
-    char2idx = {"a":1,"b":2,"c":3,"d":4,"e":5,"f":6,"g":7,"h":8,"i":9,"j":10,"k":11,"l":12,"m":13,"n":14,
-                "o":15,"p":16,"q":17,"r":18,"s":19,"t":20,"u":21,"v":22,"w":23,"x":24,"y":25,"z":26,"'":27,"unk":28}
+    char2idx = {"a": 1, "b": 2, "c": 3, "d": 4, "e": 5, "f": 6, "g": 7, "h": 8, "i": 9, "j": 10, "k": 11, "l": 12,
+                "m": 13, "n": 14,
+                "o": 15, "p": 16, "q": 17, "r": 18, "s": 19, "t": 20, "u": 21, "v": 22, "w": 23, "x": 24, "y": 25,
+                "z": 26, "'": 27, "unk": 28}
     file = open(path, encoding='utf-8')
     content = file.readlines()
     file.close()
-    token_lists, slot_lists, intent_lists, mask_lists = [],[],[],[]
-    char_lists=[]
-    slot_outs=[]
+    token_lists, slot_lists, intent_lists, mask_lists = [], [], [], []
+    char_lists = []
+    slot_outs = []
     token_list, slot_list = [], []
     slot_out = []
     over_length = 0
     query_list = []
-    max_len_word =0
-    for idx,line in enumerate(content):
+    max_len_word = 0
+    for idx, line in enumerate(content):
         line = line.strip()
-        if line !="":
+        if line != "":
             line = line.split(" ")
-            if len(line) ==1:
+            if len(line) == 1 and line[0] != "O":
                 intent = line[0]
                 intent_lists.append(intent2idx[intent])
-            if len(line)==2:
-                token, slot = line[0],line[1]
+            if len(line) == 3:
+                token, slot = line[0], line[1]
                 max_len_word = max(max_len_word, len(token))
                 if token not in vocab:
                     token_list.append(vocab["<unk>"])
@@ -60,49 +62,49 @@ def read_corpus(path, max_length, intent2idx, slot2idx, vocab, is_train=True):
                 slot_out.append(slot)
         else:
 
-            if len(token_list) > max_length-2:
-                token_list = token_list[0 : (max_length - 2)]
-                query_list = query_list[0 : (max_length - 2)]
-                over_length+=1
+            if len(token_list) > max_length - 2:
+                token_list = token_list[0: (max_length - 2)]
+                query_list = query_list[0: (max_length - 2)]
+                over_length += 1
             slot_list = slot_list[0: (max_length - 2)]
             slot_outs.append(slot_out)
 
-            char_list=[]
+            char_list = []
             for token in query_list:
                 chars = [char2idx[c] if c in char2idx else char2idx["unk"] for c in list(token)]
-                if len(chars)<25:
-                    chars= chars + (25-len(token))*[0]
+                if len(chars) < 25:
+                    chars = chars + (25 - len(token)) * [0]
                 else:
-                    chars=chars[:25]
+                    chars = chars[:25]
                 char_list.append(chars)
-            char_list = [25*[0]] + char_list+[25*[0]]
+            char_list = [25 * [0]] + char_list + [25 * [0]]
             token_list = [vocab["</s>"]] + token_list + [vocab["</e>"]]
             slot_list = [slot2idx["<start>"]] + slot_list + [slot2idx["<end>"]]
             mask_list = [1] * len(token_list)
             while len(token_list) < max_length:
-                char_list.append(25*[0])
+                char_list.append(25 * [0])
                 token_list.append(0)
                 slot_list.append(slot2idx["<PAD>"])
                 mask_list.append(0)
-            assert len(token_list)==max_length and len(slot_list) == max_length and len(mask_list)==max_length
-            assert len(char_list)==max_length
+            assert len(token_list) == max_length and len(slot_list) == max_length and len(mask_list) == max_length
+            assert len(char_list) == max_length
             token_lists.append(token_list)
             slot_lists.append(slot_list)
             mask_lists.append(mask_list)
             char_lists.append(char_list)
             query_list = []
-            token_list, slot_list,slot_out= [], [],[]
-    data_loader = toTensor(token_lists,char_lists, slot_lists,intent_lists, mask_lists,is_train=is_train)
-    print("超过最大长度的样本数量为：",over_length)
+            token_list, slot_list, slot_out = [], [], []
+    data_loader = toTensor(token_lists, char_lists, slot_lists, intent_lists, mask_lists, is_train=is_train)
+    print("超过最大长度的样本数量为：", over_length)
     print(max_len_word)
     return data_loader
 
 
-def toTensor(token_lists, char_lists, slot_lists,intent_lists, mask_lists,is_train=True):
-
-    dataset = TensorDataset(torch.LongTensor(token_lists),torch.LongTensor(char_lists),torch.LongTensor(slot_lists),torch.LongTensor(intent_lists),torch.LongTensor(mask_lists))
+def toTensor(token_lists, char_lists, slot_lists, intent_lists, mask_lists, is_train=True):
+    dataset = TensorDataset(torch.LongTensor(token_lists), torch.LongTensor(char_lists), torch.LongTensor(slot_lists),
+                            torch.LongTensor(intent_lists), torch.LongTensor(mask_lists))
     if is_train:
-        data_loader = DataLoader(dataset, shuffle=True, batch_size = config.batch_size)
+        data_loader = DataLoader(dataset, shuffle=True, batch_size=config.batch_size)
     else:
         data_loader = DataLoader(dataset, shuffle=False, batch_size=config.batch_size)
     return data_loader
@@ -110,18 +112,18 @@ def toTensor(token_lists, char_lists, slot_lists,intent_lists, mask_lists,is_tra
 
 def make_label(query, domain):
     domain_label = domain
-    token_list =[]
+    token_list = []
     for token in query:
         token_list.append(token)
     return token_list, domain_label
 
 
 def make_feature(query, mall_tag):
-    feature_list =[0]*len(query)
+    feature_list = [0] * len(query)
     for start in range(len(query)):
-        for end in range(start+1,len(query)+1):
+        for end in range(start + 1, len(query) + 1):
             if query[start:end] in mall_tag:
-                feature_list[start:end] = [1]*(end-start)
+                feature_list[start:end] = [1] * (end - start)
 
     return feature_list
 
@@ -142,10 +144,10 @@ def build_vocab(file_path, max_size, min_freq):
     return vocab_list
 
 
-def read_emb (file_path, vocab_list ):
-    embeddings=[]
-    with open(file_path, 'r', encoding='UTF-8') as f :
-        for emb in tqdm(f, "select_emb") :
+def read_emb(file_path, vocab_list):
+    embeddings = []
+    with open(file_path, 'r', encoding='UTF-8') as f:
+        for emb in tqdm(f, "select_emb"):
             emb_list = emb.strip().split(" ")
             if emb_list[0] in vocab_list:
                 embeddings.append(emb)
@@ -153,12 +155,12 @@ def read_emb (file_path, vocab_list ):
     return embeddings
 
 
-def process_emb(embedding,emb_dim):
+def process_emb(embedding, emb_dim):
     embeddings = {}
     embeddings["<pad>"] = np.zeros(emb_dim)
-    embeddings["<unk>"] = np.random.uniform(-0.01,0.01,size = emb_dim)
-    embeddings["</s>"] = np.random.uniform(-0.01,0.01,size = emb_dim)
-    embeddings["</e>"] = np.random.uniform(-0.01,0.01,size = emb_dim)
+    embeddings["<unk>"] = np.random.uniform(-0.01, 0.01, size=emb_dim)
+    embeddings["</s>"] = np.random.uniform(-0.01, 0.01, size=emb_dim)
+    embeddings["</e>"] = np.random.uniform(-0.01, 0.01, size=emb_dim)
 
     for emb in embedding:
         line = emb.strip().split()
@@ -167,18 +169,18 @@ def process_emb(embedding,emb_dim):
         embeddings[word] = word_emb
 
     vocab_list = list(embeddings.keys())
-    word2id ={vocab_list[i]:i for i in range(len(vocab_list))}
+    word2id = {vocab_list[i]: i for i in range(len(vocab_list))}
     embedding_matrix = np.array(list(embeddings.values()))
 
-    return  embedding_matrix, word2id
+    return embedding_matrix, word2id
 
 
 def lord_label_dict(path):
     label2id = {}
     id2label = {}
-    f=open(path, "r", encoding="utf-8")
+    f = open(path, "r", encoding="utf-8")
     for item in f:
-        id, label = item.strip().split("\t")
+        id, label = item.strip().split(" ")
         label2id[label] = int(id)
         id2label[int(id)] = label
     f.close()
@@ -191,3 +193,33 @@ def jieba_cut(sen):
                         sen_string)
     sen_list = jieba.cut(sen_string)
     return sen_list
+
+
+def gen_vocab_file():
+    vocab_list = build_vocab('../data/crosswoz/train.txt', 1, 1)
+    with open('../data/crosswoz/vocab.txt', 'w+', encoding='UTF-8') as f:
+        f.write("<pad>\n<unk>\n</s>\n</e>\n")
+        for vocab in vocab_list:
+            f.write(vocab + '\n')
+
+
+def gen_intent_slot_label_file():
+    with open('../data/crosswoz/intent_slot_label.txt', 'r') as f:
+        intents = []
+        slots = []
+        for line in f.readlines():
+            intents.append(line.split('-')[0])
+            slots.append(line.split('-')[1])
+        with open('../data/crosswoz/intent_label.txt', 'w+') as f1:
+            for i, intent in enumerate(set(intents)):
+                f1.write(str(i) + " " + intent + "\n")
+        with open('../data/crosswoz/slot_label.txt', 'w+') as f2:
+            f2.write("0 <PAD>\n1 <start>\n2 <end>\n3 O\n")
+            for i, slot in enumerate(set(slots)):
+                if slot != "":
+                    f2.write(str(2 * i + 4) + " B-" + slot)
+                    f2.write(str(2 * i + 5) + " I-" + slot)
+
+
+if __name__ == '__main__':
+    gen_intent_slot_label_file()
